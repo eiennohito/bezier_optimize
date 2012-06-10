@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lib", "lib\lib.vcxproj", "{C39B8D60-BFCA-4DA4-82E1-506BE79390F0}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj", "{F15FDF19-07BF-4E56-9C92-8B9FD094D662}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bezier_optimizer", "bezier_optimizer\bezier_optimizer.vcxproj", "{74B8456B-BA3C-42D6-8212-96218EFECE27}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C39B8D60-BFCA-4DA4-82E1-506BE79390F0} = {C39B8D60-BFCA-4DA4-82E1-506BE79390F0}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mfc_test", "mfc_test\mfc_test.vcxproj", "{7DDEF1A2-3FF6-429E-9D01-296956F7935A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C39B8D60-BFCA-4DA4-82E1-506BE79390F0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C39B8D60-BFCA-4DA4-82E1-506BE79390F0}.Debug|Win32.Build.0 = Debug|Win32
+		{C39B8D60-BFCA-4DA4-82E1-506BE79390F0}.Release|Win32.ActiveCfg = Release|Win32
+		{C39B8D60-BFCA-4DA4-82E1-506BE79390F0}.Release|Win32.Build.0 = Release|Win32
+		{F15FDF19-07BF-4E56-9C92-8B9FD094D662}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F15FDF19-07BF-4E56-9C92-8B9FD094D662}.Debug|Win32.Build.0 = Debug|Win32
+		{F15FDF19-07BF-4E56-9C92-8B9FD094D662}.Release|Win32.ActiveCfg = Release|Win32
+		{F15FDF19-07BF-4E56-9C92-8B9FD094D662}.Release|Win32.Build.0 = Release|Win32
+		{74B8456B-BA3C-42D6-8212-96218EFECE27}.Debug|Win32.ActiveCfg = Debug|Win32
+		{74B8456B-BA3C-42D6-8212-96218EFECE27}.Debug|Win32.Build.0 = Debug|Win32
+		{74B8456B-BA3C-42D6-8212-96218EFECE27}.Release|Win32.ActiveCfg = Release|Win32
+		{74B8456B-BA3C-42D6-8212-96218EFECE27}.Release|Win32.Build.0 = Release|Win32
+		{7DDEF1A2-3FF6-429E-9D01-296956F7935A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7DDEF1A2-3FF6-429E-9D01-296956F7935A}.Debug|Win32.Build.0 = Debug|Win32
+		{7DDEF1A2-3FF6-429E-9D01-296956F7935A}.Release|Win32.ActiveCfg = Release|Win32
+		{7DDEF1A2-3FF6-429E-9D01-296956F7935A}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

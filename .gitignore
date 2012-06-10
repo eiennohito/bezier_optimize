@@ -1,0 +1,8 @@
+bin/
+obj/
+Debug/
+*.sdf
+*.obj
+*.exe
+_ReSharper.*
+ipch/
