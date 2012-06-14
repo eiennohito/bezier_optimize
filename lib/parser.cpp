@@ -1,27 +1,24 @@
 #include "stdafx.h"
-#include "geometry.h"
-#include "BezierFragment.h"
+#include "parser.h"
+#include <boost/spirit/home/qi.hpp>
 #include <boost/fusion/adapted.hpp>
-
 namespace q = boost::spirit::qi;
-
-class ParseTest: public testing::Test {};
 
 BOOST_FUSION_ADAPT_STRUCT (
   Point2,
   (float, x)
   (float, y)
-)
+  )
 
 
-BOOST_FUSION_ADAPT_STRUCT (
+  BOOST_FUSION_ADAPT_STRUCT (
   BezierFragment, 
   (Point2, p1)
   (Point2, p2)
   (Point2, p3)
-)
+  )
 
-template<typename Iter>
+  template<typename Iter>
 struct pt_parser: q::grammar<Iter, Point2()> {
   pt_parser() : pt_parser::base_type(start) {    
     start = q::float_ >> (q::lit(' ') | q::lit(',')) >> q::float_;
@@ -46,30 +43,13 @@ struct bf_parser: q::grammar<Iter, std::vector<BezierFragment>()> {
   q::rule<Iter, std::vector<BezierFragment>()> start;
 };
 
-
-TEST_F(ParseTest, TestDouble) {
-  float val = 0;
-  auto flt = q::float_;
-  std::string s("2.12341");
-  
-  q::parse(s.begin(), s.end(), flt, val);
-  EXPECT_EQ(2.12341f, val);
-}
-
-TEST_F(ParseTest, ParseFragments) {
-  std::string str("(10 15 20 30 10 20)");
+bool parse_string( const std::string& val, std::vector<BezierFragment>& frags )
+{
   bf_parser<std::string::const_iterator> parser;
-  std::vector<BezierFragment> frags;
-  q::parse(str.begin(), str.end(), parser, frags);
-  int i = 0;
-  ++i;
+  return q::parse(val.begin(), val.end(), parser, frags);
 }
 
-TEST_F(ParseTest, TestPoint2) {
-  std::string str("2.123,23.14");
-  pt_parser<std::string::const_iterator> psr;
-  Point2 pt;
-  EXPECT_TRUE(q::parse(str.begin(), str.end(), psr, pt));
-  EXPECT_NEAR(2.123f, pt.x, 1e-5);
-  EXPECT_NEAR(23.14f, pt.y, 1e-5);
+bool parse_strings(const std::string& val, std::vector<std::vector<BezierFragment> >& frags) {
+  bf_parser<std::string::const_iterator> parser;  
+  return q::parse(val.begin(), val.end(), parser % "\n", frags);
 }

@@ -76,12 +76,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gauss_nums.cpp" />
+    <ClCompile Include="parser.cpp" />
     <ClCompile Include="WorkObjects.cpp" />
     <ClInclude Include="BezierFragment.h" />
     <ClInclude Include="gauss_nums.h" />
     <ClInclude Include="geometry.h" />
     <ClCompile Include="BezierFragment.cpp" />
     <ClCompile Include="geometry.cpp" />
+    <ClInclude Include="parser.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="storage.h" />
     <ClInclude Include="targetver.h" />

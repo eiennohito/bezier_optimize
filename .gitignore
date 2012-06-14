@@ -6,3 +6,6 @@ Debug/
 *.exe
 _ReSharper.*
 ipch/
+*.opensdf
+*.suo
+*.suo
