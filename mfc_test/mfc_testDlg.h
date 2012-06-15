@@ -40,4 +40,6 @@ public:
   void redrawDrawing(void) const;
   afx_msg void OnBnClickedCrappbtn();
   afx_msg void OnBnClickedGdappxbtn();
+  CString input;
+  afx_msg void LoadClicked();
 };

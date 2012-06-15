@@ -99,6 +99,44 @@ float bezier_chain::sqdist( const bezier_chain& o, std::vector<float>& opts, std
   return total;
 }
 
+float bezier_chain::area( const bezier_chain& o, std::vector<float>& opts, std::vector<float>& pts ) const
+{
+  if (size() == 0 || o.size() == 0) { return 0; }
+  opts.clear(); o.calc_begins(opts);
+  pts.clear(); this->calc_begins(pts);
+
+  float total = 0;
+  size_t c1 = 1, c2 = 1;
+  BezierFragment f1 = at(0), f2 = o.at(0);
+  float e1 = pts[0], e2 = opts[0];
+  do {
+    BezierFragment s1, s2;
+    if (e1 < e2) { // need to cut other segment
+      s1 = f1;      
+      auto sgs = f2.split(e1);
+      s2 = sgs.first;
+      f2 = sgs.second;
+      if (c1 != size()) {
+        f1 = at(c1);
+        e1 = pts[c1];
+        ++c1;
+      }
+    } else {
+      s2 = f2;
+      auto sgs = f1.split(e2);
+      s1 = sgs.first;
+      f1 = sgs.second;
+      if (c2 != o.size()) {
+        f2 = o.at(c2);
+        e2 = opts[c2];
+        ++c2;
+      }
+    }
+    total += s1.area(s2);
+  } while (c1 != size() || c2 != o.size());
+  return total;
+}
+
 float bezier_chain::calc_begins( std::vector<float>& buf ) const
 {
   float total = 0;
@@ -112,14 +150,13 @@ float bezier_chain::calc_begins( std::vector<float>& buf ) const
   return total;
 }
 
-int bezier_chain::gd_appx( chain_storage& o ) const
+int bezier_chain::gd_appx( chain_storage& o, std::vector<float>& v1, std::vector<float>& v2) const
 {
   {
     o.clear();  
     BezierFragment bf(tip(), tip() + (tail() - tip()) * 0.5, tail());
     o.push(bf);
-  }
-  std::vector<float> v1, v2;
+  }  
   BezierFragment& bf = o.at(0);
   bezier_chain ch(o.chain());
   float last = sqdist(ch, v1, v2);
@@ -145,6 +182,104 @@ int bezier_chain::gd_appx( chain_storage& o ) const
   return iter;
 }
 
+int bezier_chain::max_angle() const
+{
+  if (size() <= 2) {
+    return -1;
+  }
+  int min = size() - 1;
+  float mina = dot_prod(at(0).p2 - at(0).p1, at(min).p2 - at(min).p3);
+  for (int i = 0; i < size() - 1; ++i) {
+    float val = dot_prod(at(i).p2 - at(i).p3, at(i + 1).p2 - at(i + 1).p1);
+    if (val < mina) {
+      mina = val;
+      min = i;
+    }
+  }
+  return min;
+}
+
+int bezier_chain::simplify_gd( chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const
+{
+  float mylen = length();
+  int sz = size();
+  if (sz == 1) {
+    st.push(at(0));
+    return 1;
+  }
+  chain_storage temp;  
+  if (sz == 2) {
+    gd_appx(temp, v1, v2);   
+    if (temp.chain().dist(*this, v1, v2) < margin) {
+      st.push(temp.at(0));
+      return 1;
+    } else {
+      st.push(*this);
+      return 2;
+    }
+  }
+  if (sz == 3) {
+    gd_appx(temp, v1, v2);   
+    if (temp.chain().dist(*this, v1, v2) < margin) {
+      st.push(temp.at(0));
+      return 1;
+    } else {
+      chain_storage left, right;
+      int lc = ssm_gd(1, left, margin, v1, v2);
+      int rc = ssm_gd(2, right, margin, v1, v2);
+      if (lc < rc) {
+        st.push(left.chain());
+        return lc;
+      } else {
+        st.push(right.chain());
+        return rc;
+      }
+    }
+  }
+
+  if (sz < 64) {
+    gd_appx(temp, v1, v2);   
+    if (temp.chain().dist(*this, v1, v2) < margin) {
+      st.push(temp.at(0));
+      return 1;
+    }
+  }
+  chain_storage stor[3];
+  int pos[3];
+  int splits[3] = { sz / 3,
+    sz / 2,
+    2 * sz / 3};
+  for (int i = 0; i < 3; ++i) {
+    pos[i] = ssm_gd(splits[i], stor[i], margin, v1, v2);
+  }
+  int* minel = std::min_element(pos, pos + 3);
+  st.push(stor[minel - pos].chain());
+  return *minel;
+}
+
+int bezier_chain::ssm_gd( int at, chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2 ) const
+{
+
+}
+
+float bezier_chain::length() const
+{
+  float len = 0;
+  for (int i = 0; i < size(); ++i) {
+    len += at(i).length();
+  }
+  return len;
+}
+
+float bezier_chain::dist( const bezier_chain& o, std::vector<float>& v1, std::vector<float>& v2 ) const
+{
+  float ar = o.area(*this, v1, v2);
+  float len = o.length() + length();
+  return 2 * ar / len;
+}
+
+
+
 bezier_chain chain_storage::chain() const
 {
   return bezier_chain(lines_, 0, lines_.size());
@@ -158,4 +293,16 @@ const Point2& chain_storage::tail() const
 void chain_storage::push( const BezierFragment& frag )
 {
   lines_.push_back(frag);
+}
+
+void chain_storage::push( const bezier_chain& ch )
+{
+  ch.for_each_fragment([this](const BezierFragment& bf) { 
+    this->push(bf);
+  });
+}
+
+std::vector<BezierFragment>& chain_storage::data()
+{
+  return lines_;
 }

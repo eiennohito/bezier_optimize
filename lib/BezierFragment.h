@@ -27,6 +27,7 @@ public:
   float difference(float olen, const std::vector<length_at_crd>& vec) const ;
 
   float sqdist(const BezierFragment& o) const;
+  float area( const BezierFragment& s2 ) const;
 
   std::pair<BezierFragment, BezierFragment> split(float at) const;
 
@@ -36,6 +37,9 @@ public:
 
 private:
   float f(float z, float t) const;
+  
 };
+
+typedef const BezierFragment& cbfref;
 #endif // BezierFragment_h__0f13a1b8_d9f0_4a09_9d72_43b71ac35ce3
 

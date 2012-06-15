@@ -97,3 +97,17 @@ std::pair<BezierFragment, BezierFragment> BezierFragment::split( float at ) cons
       BezierFragment(p6, p5, p3)
     );
 }
+
+float BezierFragment::area( const BezierFragment& o ) const
+{
+  const size_t order = 3;
+  float total = 0.0;
+  for (int i = 0; i < order; ++i) {
+    float z = g_absciss[order][i];
+    float t = 0.5f + z * 0.5f;
+    Point2 p1 = interpolate(t);
+    Point2 p2 = o.interpolate(t);
+    total += g_weight[order][i] * sqrtf(::sqdist(p1, p2));
+  }
+  return total * 0.5f;
+}

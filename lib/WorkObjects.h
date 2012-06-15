@@ -39,12 +39,19 @@ public:
   }
 
   float sqdist(const bezier_chain& o, std::vector<float>& opts, std::vector<float>& buf) const;
+  float area(const bezier_chain& o, std::vector<float>& opts, std::vector<float>& buf) const;
+  float dist(const bezier_chain& o, std::vector<float>& v1, std::vector<float>& v2) const;
+  float length() const;
   float calc_begins(std::vector<float>& buf) const;
 
   float length_at_crds(int cnt, std::vector<length_at_crd>& lacs) const;
   BezierFragment head() const;
   BezierFragment crude_appx() const;
-  int gd_appx(chain_storage& o) const;
+  int gd_appx(chain_storage& o, std::vector<float>& v1, std::vector<float>& v2) const;
+  int max_angle() const;
+  int simplify_gd(chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const;
+  //split-simplify-merge
+  int ssm_gd(int at, chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const;
 };
 
 class chain_storage {
@@ -57,6 +64,8 @@ public:
   const BezierFragment& at(size_t idx) const { return lines_[idx]; }
   BezierFragment& at(size_t idx) { return lines_[idx]; }
   void push(const BezierFragment& frag);
+  void push(const bezier_chain& ch);
+  std::vector<BezierFragment>& data();
 };
 
 class work_objs {

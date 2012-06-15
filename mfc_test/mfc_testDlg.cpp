@@ -10,6 +10,7 @@
 #include <memory>
 #include <tuple>
 #include "WorkObjects.h"
+#include "parser.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -68,8 +69,52 @@ static struct {
   size_t pt_id;
 } moveObj;
 
+static struct {
+  float xmin, xmax, ymin, ymax;
+  float tform[6];
+} bbox;
+
+void calc_bbox() {
+  auto v = curves[0].chain();
+  bbox.xmin = 1e10f;
+  bbox.xmax = -1e10f;
+  bbox.ymin = 1e10f;
+  bbox.ymax = -1e10f;
+  v.for_each_fragment([](const BezierFragment& f) {
+    for (int i = 0; i < 3; ++i) {
+      bbox.xmin = min(f[i].x, bbox.xmin);
+      bbox.xmax = max(f[i].x, bbox.xmax);
+      bbox.ymin = min(f[i].y, bbox.ymin);
+      bbox.ymax = max(f[i].y, bbox.ymax);
+    }
+  });
+  
+  float cx = (bbox.xmin + bbox.xmax) / 2;
+  float cy = (bbox.ymin + bbox.ymax) / 2;
+
+  CRect rect;
+  textarea->GetClientRect(rect);
+  auto center = rect.CenterPoint();
+  float h = abs(rect.top - center.y);
+  float w = abs(rect.right - center.x);
+
+  float a = -cx;
+  float b = -cy;
+  float c = w / abs(cx - bbox.xmax);
+  float d = h / abs(cy - bbox.xmin);
+  float s = min(c, d) * 0.95;
+  float f[6] = {
+    s, 0, w + s * a,
+    0, s, h + s * b
+  };
+  std::copy(f, f+6, bbox.tform);
+}
+
 Point2 tfed(const Point2& pt) {
-  return pt;
+  auto& f = bbox.tform;
+  float x = pt.x * f[0] + pt.y * f[1] + f[2];
+  float y = pt.x * f[3] + pt.y * f[4] + f[5];
+  return Point2(x, y);
 }
 
 CPoint convert(const Point2& pt) {
@@ -277,12 +322,14 @@ Cmfc_testDlg::Cmfc_testDlg(CWnd* pParent /*=NULL*/)
 {
   m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
   checkedIdx = 0;
+  input = _T("");
 }
 
 void Cmfc_testDlg::DoDataExchange(CDataExchange* pDX)
 {
   CDialogEx::DoDataExchange(pDX);
   DDX_Radio(pDX, IDC_RADIO1, checkedIdx);
+  DDX_Text(pDX, IDC_EDIT1, input);
 }
 
 BEGIN_MESSAGE_MAP(Cmfc_testDlg, CDialogEx)
@@ -297,6 +344,7 @@ BEGIN_MESSAGE_MAP(Cmfc_testDlg, CDialogEx)
   ON_WM_LBUTTONUP()
   ON_BN_CLICKED(IDC_CRAPPBTN, &Cmfc_testDlg::OnBnClickedCrappbtn)
   ON_BN_CLICKED(IDC_GDAPPXBTN, &Cmfc_testDlg::OnBnClickedGdappxbtn)
+  ON_BN_CLICKED(IDC_BUTTON1, &Cmfc_testDlg::LoadClicked)
 END_MESSAGE_MAP()
 
 
@@ -305,6 +353,9 @@ END_MESSAGE_MAP()
 BOOL Cmfc_testDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
+  bbox.tform[0] = 1;
+  bbox.tform[4] = 1;
+
 
 	// Add "About..." menu item to system menu.
 
@@ -477,4 +528,17 @@ void Cmfc_testDlg::OnBnClickedGdappxbtn()
     points[1].clear();
     redrawDrawing();
   }
+}
+
+
+void Cmfc_testDlg::LoadClicked()
+{
+  this->UpdateData(TRUE);
+  std::string inp;  
+  curves[0].clear();
+  std::copy(input.GetString(), input.GetString() + input.GetLength(), std::back_inserter(inp));
+  parse_string(inp, curves[0].data());
+  points[0].clear();
+  calc_bbox();
+  redrawDrawing();
 }
