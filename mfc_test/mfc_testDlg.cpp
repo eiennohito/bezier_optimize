@@ -100,9 +100,9 @@ void calc_bbox() {
 
   float a = -cx;
   float b = -cy;
-  float c = w / abs(cx - bbox.xmax);
-  float d = h / abs(cy - bbox.xmin);
-  float s = min(c, d) * 0.95;
+  float c = rect.Width() / (bbox.xmax - bbox.xmin);
+  float d = rect.Height() / (bbox.ymax - bbox.ymin);
+  float s = min(c, d) * 0.50;
   float f[6] = {
     s, 0, w + s * a,
     0, s, h + s * b
@@ -131,7 +131,7 @@ void generate_points(chain_storage& st, std::vector<CPoint>& pts) {
   Point2 last = tfed(chain.head().p1);
   pts.push_back(convert(last));
   chain.for_each_fragment([&](const BezierFragment& fr){
-    float len = fr.length();
+    float len = fr.length() * bbox.tform[0];
     if (len < margin) {
       Point2 p = tfed(fr.p3);
       float lastdist = fabs(sqdist(p, last));
@@ -223,9 +223,10 @@ void calculateDistance()
     float dist = 2 * area / (len + len2);
     std::vector<float> v1, v2;
     float sqdist = curves[0].chain().sqdist(curves[1].chain(), v1, v2);
+    float area2 = curves[0].chain().area(curves[1].chain(), v1, v2);
     CString s;
-    s.Format(L"Area: %f\nDist: %f\nl1:%f; l2:%f\nsqdist: %f", 
-      area, dist, len, len2, sqdist);
+    s.Format(L"Area: %f\nDist: %f\nl1:%f; l2:%f\nsqdist: %f\narea2: %f\n%d-%d", 
+      area, dist, len, len2, sqdist, area2, curves[0].size(), curves[1].size());
     if (textarea != 0) {
       textarea->SetDlgItemTextW(IDC_TEXTAREA, s);
     }
@@ -323,6 +324,7 @@ Cmfc_testDlg::Cmfc_testDlg(CWnd* pParent /*=NULL*/)
   m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
   checkedIdx = 0;
   input = _T("");
+  simplPer = 5.0;
 }
 
 void Cmfc_testDlg::DoDataExchange(CDataExchange* pDX)
@@ -330,6 +332,7 @@ void Cmfc_testDlg::DoDataExchange(CDataExchange* pDX)
   CDialogEx::DoDataExchange(pDX);
   DDX_Radio(pDX, IDC_RADIO1, checkedIdx);
   DDX_Text(pDX, IDC_EDIT1, input);
+  DDX_Text(pDX, IDC_EDIT2, simplPer);
 }
 
 BEGIN_MESSAGE_MAP(Cmfc_testDlg, CDialogEx)
@@ -345,6 +348,7 @@ BEGIN_MESSAGE_MAP(Cmfc_testDlg, CDialogEx)
   ON_BN_CLICKED(IDC_CRAPPBTN, &Cmfc_testDlg::OnBnClickedCrappbtn)
   ON_BN_CLICKED(IDC_GDAPPXBTN, &Cmfc_testDlg::OnBnClickedGdappxbtn)
   ON_BN_CLICKED(IDC_BUTTON1, &Cmfc_testDlg::LoadClicked)
+  ON_BN_CLICKED(IDC_SIMPLIFY1, &Cmfc_testDlg::OnBnClickedSimplify1)
 END_MESSAGE_MAP()
 
 
@@ -523,8 +527,9 @@ void Cmfc_testDlg::OnBnClickedCrappbtn()
 
 void Cmfc_testDlg::OnBnClickedGdappxbtn()
 {
+  std::vector<float> v1, v2;
   if (curves[0].size() >= 2) {
-    curves[0].chain().gd_appx(curves[1]);
+    curves[0].chain().gd_appx(curves[1], v1, v2);
     points[1].clear();
     redrawDrawing();
   }
@@ -541,4 +546,17 @@ void Cmfc_testDlg::LoadClicked()
   points[0].clear();
   calc_bbox();
   redrawDrawing();
+}
+
+
+void Cmfc_testDlg::OnBnClickedSimplify1()
+{
+  if (curves[0].size() >= 2) {
+    UpdateData(TRUE);
+    curves[1].clear();
+    points[1].clear();
+    std::vector<float> v1, v2;
+    curves[0].chain().simplify_gd(curves[1], (float)simplPer, v1, v2);
+    redrawDrawing();
+  }
 }

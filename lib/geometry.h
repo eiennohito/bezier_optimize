@@ -24,6 +24,8 @@ struct Point2: boost::additive<Point2>, boost::multiplicative<Point2, float> {
 
 typedef Point2 Vector2;
 
+bool equal(const Point2& p1, const Point2& p2, float dist);
+
 float dot_prod(const Vector2& v1, const Vector2& v2);
 float cross_prod(const Vector2& v1, const Vector2& v2);
 

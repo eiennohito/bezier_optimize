@@ -17,3 +17,8 @@ float cross_prod( const Vector2& v1, const Vector2& v2 )
 {
   return v1.x * v2.y - v2.x * v1.y;
 }
+
+bool equal( const Point2& p1, const Point2& p2, float dist )
+{
+  return sqdist(p1, p2) < dist;
+}

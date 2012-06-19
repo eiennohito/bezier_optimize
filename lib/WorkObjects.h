@@ -11,6 +11,12 @@ struct length_at_crd {
   float length;
 };
 
+struct simplify_result {
+  int result_pts;
+  int reduce;
+  float error;
+};
+
 class bezier_chain {
   const std::vector<BezierFragment> &stor_;
   size_t begin_;
@@ -29,8 +35,16 @@ public:
   const Point2& tip() const { return at(0).p1; }
   const Point2& tail() const { return at(size() - 1).p3; }
 
+  bezier_chain to(size_t at) const {
+    return bezier_chain(stor_, begin_, begin_ + at);
+  }
+
+  bezier_chain from(size_t at) const {
+    return bezier_chain(stor_,  begin_ + at, end_);
+  }
+
   std::pair<bezier_chain, bezier_chain> split(size_t at) const {
-    std::make_pair(bezier_chain(stor_, begin_, at), bezier_chain(stor_, at, end_));
+    return std::make_pair(to(at), from(at));
   }
 
   template<typename F>
@@ -49,9 +63,10 @@ public:
   BezierFragment crude_appx() const;
   int gd_appx(chain_storage& o, std::vector<float>& v1, std::vector<float>& v2) const;
   int max_angle() const;
-  int simplify_gd(chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const;
+  simplify_result simplify_gd_inner(chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const;
   //split-simplify-merge
-  int ssm_gd(int at, chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const;
+  simplify_result ssm_gd(int at, chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const;
+  simplify_result simplify_gd( chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2 ) const;
 };
 
 class chain_storage {

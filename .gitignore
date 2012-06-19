@@ -1,11 +1,11 @@
 bin/
 obj/
 Debug/
+Release/
 *.sdf
 *.obj
 *.exe
 _ReSharper.*
 ipch/
 *.opensdf
-*.suo
 *.suo

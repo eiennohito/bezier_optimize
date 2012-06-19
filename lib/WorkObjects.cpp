@@ -2,6 +2,16 @@
 #include "WorkObjects.h"
 #include <algorithm>
 #include <cmath>
+#include <tuple>
+#include <cstdlib>
+#include <crtdbg.h>
+
+#ifdef _DEBUG
+#define RPT(msg, ...) _RPT_BASE((_CRT_WARN, NULL, 0, NULL, msg, __VA_ARGS__))
+#else
+#define RPT(msg, ...)
+#endif
+
 
 float round(float r) {
   return (r > 0.0f) ? std::floor(r + 0.5f) : std::ceil(r - 0.5f);
@@ -152,6 +162,10 @@ float bezier_chain::calc_begins( std::vector<float>& buf ) const
 
 int bezier_chain::gd_appx( chain_storage& o, std::vector<float>& v1, std::vector<float>& v2) const
 {
+  if (equal(tip(), tail(), 1e-5)) {
+    //o.push(BezierFragment(tip(), tip(), tip()));
+    return -1;
+  }
   {
     o.clear();  
     BezierFragment bf(tip(), tip() + (tail() - tip()) * 0.5, tail());
@@ -160,8 +174,9 @@ int bezier_chain::gd_appx( chain_storage& o, std::vector<float>& v1, std::vector
   BezierFragment& bf = o.at(0);
   bezier_chain ch(o.chain());
   float last = sqdist(ch, v1, v2);
+  const int max_iter = 10;
   int iter = 0;
-  for (; iter < 50; ++iter) {
+  for (; iter < max_iter; ++iter) {
     const float delta = 0.01f;
     auto pt = bf.p2;
     float f0 = sqdist(ch, v1, v2);
@@ -171,7 +186,7 @@ int bezier_chain::gd_appx( chain_storage& o, std::vector<float>& v1, std::vector
     float fy = sqdist(ch, v1, v2);
     float dx = (fx - f0) / delta;
     float dy = (fy - f0) / delta;
-    Point2 np(pt.x - dx, pt.y - dy);
+    Point2 np(pt.x - dx * 1.5, pt.y - dy * 1.5);
     bf.p2 = np;
     float dist = sqdist(ch, v1, v2);
     if (fabs(last - dist) < 0.001) {
@@ -199,73 +214,116 @@ int bezier_chain::max_angle() const
   return min;
 }
 
-int bezier_chain::simplify_gd( chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const
+simplify_result bezier_chain::simplify_gd_inner( chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2) const
 {
   float mylen = length();
   int sz = size();
   if (sz == 1) {
     st.push(at(0));
-    return 1;
+    simplify_result res = {1, 0, 0};
+    return res;
   }
   chain_storage temp;  
   if (sz == 2) {
-    gd_appx(temp, v1, v2);   
-    if (temp.chain().dist(*this, v1, v2) < margin) {
-      st.push(temp.at(0));
-      return 1;
-    } else {
-      st.push(*this);
-      return 2;
+    if (gd_appx(temp, v1, v2) != -1) {
+      auto error = temp.chain().sqdist(*this, v1, v2);
+      if (error < margin) {
+        st.push(temp.at(0));
+        simplify_result res = {1, 1, error};
+        return res;
+      } else {
+        st.push(*this);
+        simplify_result res = {2, 0, 0};
+        return res;
+      }
     }
   }
   if (sz == 3) {
-    gd_appx(temp, v1, v2);   
-    if (temp.chain().dist(*this, v1, v2) < margin) {
-      st.push(temp.at(0));
-      return 1;
-    } else {
-      chain_storage left, right;
-      int lc = ssm_gd(1, left, margin, v1, v2);
-      int rc = ssm_gd(2, right, margin, v1, v2);
-      if (lc < rc) {
-        st.push(left.chain());
-        return lc;
+    if (gd_appx(temp, v1, v2) != -1) {
+      auto error = temp.chain().sqdist(*this, v1, v2);
+      if (error < margin) {
+        st.push(temp.at(0));
+        simplify_result res = {1, 2, error};
+        return res;
       } else {
-        st.push(right.chain());
-        return rc;
+        chain_storage left, right;        
+        simplify_result lc = to(2).simplify_gd_inner(left, margin, v1, v2);
+        simplify_result rc = from(1).simplify_gd_inner(right, margin, v1, v2);
+        if (left.size() < right.size()) {
+          st.push(left.chain());
+          st.push(at(2));
+          simplify_result res = {lc.result_pts + 1, 2 - lc.result_pts, lc.error};
+          return res;
+        } else {          
+          st.push(at(0));
+          st.push(right.chain());
+          simplify_result res = {rc.result_pts + 1, 2 - rc.result_pts, rc.error};
+          return res;
+        }
       }
     }
   }
 
   if (sz < 64) {
-    gd_appx(temp, v1, v2);   
-    if (temp.chain().dist(*this, v1, v2) < margin) {
-      st.push(temp.at(0));
-      return 1;
+    if (gd_appx(temp, v1, v2) != -1) {
+      auto error = temp.chain().sqdist(*this, v1, v2);
+      if (error < margin) {
+        st.push(temp.at(0));
+        simplify_result res = {1, sz - 1, error};
+        return res;
+      }
     }
   }
   chain_storage stor[3];
-  int pos[3];
+  simplify_result pos[3];
   int splits[3] = { sz / 3,
     sz / 2,
     2 * sz / 3};
   for (int i = 0; i < 3; ++i) {
     pos[i] = ssm_gd(splits[i], stor[i], margin, v1, v2);
   }
-  int* minel = std::min_element(pos, pos + 3);
+  simplify_result* minel = std::min_element(pos, pos + 3, [](const simplify_result& sr1, const simplify_result& sr2) {
+    return (sr1.error / sr1.reduce) < (sr2.error / sr2.reduce);
+  });
   st.push(stor[minel - pos].chain());
   return *minel;
 }
 
-int bezier_chain::ssm_gd( int at, chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2 ) const
-{
+simplify_result bezier_chain::ssm_gd( int at, chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2 ) const
+{  
+  _RPTF4(_CRT_WARN, "Splitting %d line [%d, %d] at %d\n", size(), begin_, end_, at);
+  auto chns = split(at);  
+  float fs = chns.first.size();
+  float ss = chns.second.size();
+  float total = fs * fs + ss * ss;
+  float m1 = margin * fs / size();
+  float m2 = margin * ss / size();
 
+  chain_storage temp;
+
+  simplify_result s1 = chns.first.simplify_gd_inner(temp, margin / 2, v1, v2);
+  simplify_result s2 = chns.second.simplify_gd_inner(temp, margin / 2, v1, v2);
+  if (temp.size() <= 3) {
+    chain_storage temp2;
+    auto ssize = temp.chain().simplify_gd_inner(temp2, margin, v1, v2);
+    auto error = sqdist(temp2.chain(), v1, v2);
+    if (error < margin) {
+      _RPTF4(_CRT_WARN, "Splitting-merging-simplfying of %d line [%d, %d] -> %d\n", size(), begin_, end_, ssize.result_pts);
+      st.push(temp2.chain());
+      return ssize;
+    }
+  } 
+  st.push(temp.chain());
+  RPT("Splitted and merged %d line [%d, %d] to %d, %f and %d, %f; margin = %f\n", size(), begin_, end_, s1.result_pts, s1.error, s2.result_pts, s2.error, margin);
+  simplify_result res = { s1.result_pts + s2.result_pts, s1.reduce + s2.reduce, s1.error + s2.error };
+  return res;
 }
 
 float bezier_chain::length() const
 {
   float len = 0;
-  for (int i = 0; i < size(); ++i) {
+  const auto sz = size();
+  for (int i = 0; i < sz; ++i) {
     len += at(i).length();
   }
   return len;
@@ -276,6 +334,24 @@ float bezier_chain::dist( const bezier_chain& o, std::vector<float>& v1, std::ve
   float ar = o.area(*this, v1, v2);
   float len = o.length() + length();
   return 2 * ar / len;
+}
+
+simplify_result bezier_chain::simplify_gd( chain_storage& st, float margin, std::vector<float>& v1, std::vector<float>& v2 ) const
+{
+  float xmin = 1e10f;
+  float xmax = -1e10f;
+  float ymin = 1e10f;
+  float ymax = -1e10f;
+  for_each_fragment([&](const BezierFragment& f) {
+    for (int i = 0; i < 3; ++i) {
+      xmin = std::min(f[i].x, xmin);
+      xmax = std::max(f[i].x, xmax);
+      ymin = std::min(f[i].y, ymin);
+      ymax = std::max(f[i].y, ymax);
+    }
+  });
+  float m = (xmax - xmin) * (ymax - ymin) * margin / 100.f;
+  return simplify_gd_inner(st, m, v1, v2);
 }
 
 

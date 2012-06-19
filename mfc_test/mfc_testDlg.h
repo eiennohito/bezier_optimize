@@ -42,4 +42,6 @@ public:
   afx_msg void OnBnClickedGdappxbtn();
   CString input;
   afx_msg void LoadClicked();
+  afx_msg void OnBnClickedSimplify1();
+  double simplPer;
 };

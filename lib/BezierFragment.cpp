@@ -17,9 +17,10 @@ Point2 BezierFragment::interpolate( float t ) const
 
 float BezierFragment::length(float z) const
 {
+  const size_t order = 5;
   float v = 0;
-  for(size_t i = 0; i < 5; ++i) {
-    v += f(z, g_absciss[5][i]) * g_weight[5][i];
+  for(size_t i = 0; i < order; ++i) {
+    v += f(z, g_absciss[order][i]) * g_weight[order][i];
   }
   return v * (z / 2);
 }
@@ -36,9 +37,6 @@ float BezierFragment::f( float z, float t ) const
 float BezierFragment::difference( float olen, const std::vector<length_at_crd>& vec) const
 {
   float total = 0;
-  auto sz = vec.size();
-  _ASSERT(sz < 64);
-  float *absciss = g_absciss[sz], *wts = g_weight[sz];
   Point2 my_prev = interpolate(vec[0].length / olen);
   Point2 his_prev = vec[0].crd;
 
@@ -109,5 +107,5 @@ float BezierFragment::area( const BezierFragment& o ) const
     Point2 p2 = o.interpolate(t);
     total += g_weight[order][i] * sqrtf(::sqdist(p1, p2));
   }
-  return total * 0.5f;
+  return total * 0.25f * (length() + o.length());
 }
